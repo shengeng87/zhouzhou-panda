@@ -173,28 +173,33 @@
 
     .dpad {
       display: grid;
-      grid-template-columns: repeat(3, minmax(54px, 16vw));
-      grid-template-rows: repeat(3, minmax(48px, 14vw));
-      gap: 6px;
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(3, 40px);
+      gap: 4px;
       pointer-events: auto;
+      opacity: 0.92;
     }
 
     .dpad button {
+      width: 40px;
+      height: 40px;
+      padding: 0;
       border: 0;
-      border-radius: 16px;
+      border-radius: 10px;
       color: #16324d;
-      font-size: clamp(20px, 6vw, 28px);
+      font-size: 16px;
+      line-height: 1;
       font-weight: 900;
       cursor: pointer;
       touch-action: manipulation;
-      background: linear-gradient(180deg, #fff3a9, var(--gold));
-      box-shadow: 0 8px 0 #d9a930, 0 14px 22px rgba(50, 74, 85, 0.2);
+      background: linear-gradient(180deg, rgba(255, 243, 169, 0.92), rgba(255, 212, 90, 0.92));
+      box-shadow: 0 4px 0 #d9a930, 0 6px 12px rgba(50, 74, 85, 0.16);
     }
 
     .dpad button:active,
     .dpad button.pressed {
-      transform: translateY(5px);
-      box-shadow: 0 3px 0 #d9a930, 0 8px 16px rgba(50, 74, 85, 0.18);
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #d9a930, 0 4px 8px rgba(50, 74, 85, 0.14);
     }
 
     .dpad .empty {
@@ -251,8 +256,15 @@
         top: 38%;
       }
 
+      .dpad {
+        grid-template-columns: repeat(3, 36px);
+        grid-template-rows: repeat(3, 36px);
+      }
+
       .dpad button {
-        min-height: 46px;
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
       }
 
       .hint {
@@ -389,7 +401,7 @@
 
       function computeLayout() {
         const top = Math.max(118, height * 0.16);
-        const bottom = height - Math.max(190, height * 0.28);
+        const bottom = height - Math.max(132, height * 0.18);
         const usableH = bottom - top;
         rowCount = Math.max(4, Math.min(6, Math.floor(usableH / 72)));
         const rowStep = usableH / (rowCount - 1);
@@ -439,7 +451,7 @@
 
         return {
           x: from.x + (to.x - from.x) * ease,
-          y: from.y + (to.y - from.y) * ease - jumpLift,
+          y: yFrom + (yTo - yFrom) * ease - jumpLift,
           bamboo: t < 0.5 ? from.bamboo : to.bamboo,
           side: t < 0.5 ? from.side : to.side
         };
