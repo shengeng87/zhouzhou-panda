@@ -336,7 +336,7 @@
       const SLOT_SIDE = ["left", "right", "left", "right", "left", "right"];
 
       const CONFIG = {
-        maxHearts: 5,
+        maxHearts: 3,
         startHearts: 3,
         invincibleMs: 1400,
         moveAnimMs: 200,
@@ -597,10 +597,11 @@
       }
 
       function gainHeart() {
-        if (hearts < CONFIG.maxHearts) {
-          hearts += 1;
-          renderHearts();
+        if (hearts >= CONFIG.maxHearts) {
+          return;
         }
+        hearts = Math.min(CONFIG.maxHearts, hearts + 1);
+        renderHearts();
       }
 
       function bugSpeedNow() {
