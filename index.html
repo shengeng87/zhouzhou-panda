@@ -342,14 +342,19 @@
         moveAnimMs: 200,
         verticalAnimMs: 320,
         jumpAnimMs: 340,
-        bugSpeed: 92,
+        bugSpeedBase: 78,
+        bugSpeedMax: 188,
+        bugSpeedLogScale: 22,
+        bugSpeedCapTime: 200,
         shootSpeed: 118,
         bugSpawnMs: 1650,
-        shootSpawnMs: 4200,
+        bugSpawnMsMin: 920,
+        shootSpawnMs: 11000,
+        shootSpawnJitter: 3200,
         minSpawnGap: 520,
         scorePerSecond: 10,
-        pandaHitW: 34,
-        pandaHitH: 38,
+        pandaHitW: 42,
+        pandaHitH: 46,
         itemHitR: 18
       };
 
@@ -558,7 +563,7 @@
         elapsedPlay = 0;
         failReason = "";
         nextBugAt = now + 900;
-        nextShootAt = now + 2200;
+        nextShootAt = now + 5200;
         scoreEl.textContent = "0";
         renderHearts();
         titleEl.style.display = "none";
@@ -597,6 +602,26 @@
         }
       }
 
+      function bugSpeedNow() {
+        const t = elapsedPlay;
+        const progress = Math.min(
+          1,
+          Math.log1p(t / CONFIG.bugSpeedLogScale) /
+            Math.log1p(CONFIG.bugSpeedCapTime / CONFIG.bugSpeedLogScale)
+        );
+        return CONFIG.bugSpeedBase + (CONFIG.bugSpeedMax - CONFIG.bugSpeedBase) * progress;
+      }
+
+      function bugSpawnDelay() {
+        const t = elapsedPlay;
+        const progress = Math.min(
+          1,
+          Math.log1p(t / CONFIG.bugSpeedLogScale) /
+            Math.log1p(CONFIG.bugSpeedCapTime / CONFIG.bugSpeedLogScale)
+        );
+        return CONFIG.bugSpawnMs - (CONFIG.bugSpawnMs - CONFIG.bugSpawnMsMin) * progress;
+      }
+
       function spawnBug(now) {
         const bamboo = Math.floor(Math.random() * 3);
         const side = Math.random() < 0.5 ? "left" : "right";
@@ -606,8 +631,12 @@
           y: layout.top - 24,
           wiggle: Math.random() * Math.PI * 2
         });
-        const difficulty = Math.min(0.45, elapsedPlay / 120);
-        nextBugAt = now + CONFIG.bugSpawnMs * (1 - difficulty) + Math.random() * CONFIG.minSpawnGap;
+        const difficulty = Math.min(
+          1,
+          Math.log1p(elapsedPlay / CONFIG.bugSpeedLogScale) /
+            Math.log1p(CONFIG.bugSpeedCapTime / CONFIG.bugSpeedLogScale)
+        );
+        nextBugAt = now + bugSpawnDelay() * (1 - difficulty * 0.18) + Math.random() * CONFIG.minSpawnGap;
       }
 
       function spawnShoot(now) {
@@ -617,7 +646,7 @@
           y: layout.top - 30,
           spin: Math.random() * Math.PI * 2
         });
-        nextShootAt = now + CONFIG.shootSpawnMs + Math.random() * 1800;
+        nextShootAt = now + CONFIG.shootSpawnMs + Math.random() * CONFIG.shootSpawnJitter;
       }
 
       function itemX(bamboo, side) {
@@ -639,7 +668,7 @@
         score += (dt * 0.001) * CONFIG.scorePerSecond;
         scoreEl.textContent = String(Math.floor(score));
 
-        const speedBoost = 1 + Math.min(0.55, elapsedPlay / 100);
+        const bugSpeed = bugSpeedNow();
 
         if (now >= nextBugAt) {
           spawnBug(now);
@@ -649,7 +678,7 @@
         }
 
         bugs = bugs.filter((bug) => {
-          bug.y += CONFIG.bugSpeed * speedBoost * dt * 0.001;
+          bug.y += bugSpeed * dt * 0.001;
           bug.wiggle += dt * 0.008;
           if (bug.y > layout.groundY + 30) {
             return false;
@@ -846,61 +875,96 @@
 
       function drawPanda(x, y, now, invincible) {
         const blink = invincible && Math.floor(now / 90) % 2 === 0;
+        const bob = Math.sin(now * 0.008) * 1.5;
+        const py = y + bob;
 
         ctx.save();
         if (blink) {
           ctx.globalAlpha = 0.45;
         }
-
-        ctx.fillStyle = "rgba(20, 40, 20, 0.18)";
-        ctx.beginPath();
-        ctx.ellipse(x, y + 24, 28, 8, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#fff";
-        roundedRect(x - 24, y - 8, 48, 40, 16);
-        ctx.fill();
-
-        ctx.fillStyle = "#1a1a1a";
-        ctx.beginPath();
-        ctx.arc(x - 16, y - 20, 10, 0, Math.PI * 2);
-        ctx.arc(x + 16, y - 20, 10, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(x, y - 18, 18, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#1a1a1a";
-        ctx.beginPath();
-        ctx.arc(x - 6, y - 18, 3, 0, Math.PI * 2);
-        ctx.arc(x + 6, y - 18, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#1a1a1a";
-        ctx.beginPath();
-        ctx.ellipse(x, y - 10, 5, 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = "#333";
-        ctx.lineWidth = 8;
         ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        ctx.fillStyle = "rgba(20, 40, 20, 0.16)";
         ctx.beginPath();
-        ctx.moveTo(x - 14, y + 8);
-        ctx.lineTo(x - 28, y + 22);
-        ctx.moveTo(x + 14, y + 8);
-        ctx.lineTo(x + 28, y + 22);
+        ctx.ellipse(x, py + 30, 30, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 短腿
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.ellipse(x - 14, py + 28, 10, 8, 0, 0, Math.PI * 2);
+        ctx.ellipse(x + 14, py + 28, 10, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 圆滚滚身体
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.ellipse(x, py + 10, 28, 24, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 肩上的黑补丁
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.ellipse(x - 18, py + 2, 11, 9, -0.35, 0, Math.PI * 2);
+        ctx.ellipse(x + 18, py + 2, 11, 9, 0.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 短手臂
+        ctx.fillStyle = "#1a1a1a";
+        roundedRect(x - 34, py + 6, 14, 20, 7);
+        ctx.fill();
+        roundedRect(x + 20, py + 6, 14, 20, 7);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(x - 27, py + 24, 5, 0, Math.PI * 2);
+        ctx.arc(x + 27, py + 24, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 大头
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(x, py - 16, 24, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 圆耳朵
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.arc(x - 18, py - 34, 8, 0, Math.PI * 2);
+        ctx.arc(x + 18, py - 34, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 黑眼圈
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.ellipse(x - 11, py - 16, 9, 11, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(x + 11, py - 16, 9, 11, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 眼睛
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(x - 10, py - 17, 3.2, 0, Math.PI * 2);
+        ctx.arc(x + 10, py - 17, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#111";
+        ctx.beginPath();
+        ctx.arc(x - 9, py - 17, 1.6, 0, Math.PI * 2);
+        ctx.arc(x + 11, py - 17, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 鼻子和嘴
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.ellipse(x, py - 8, 5, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, py - 2, 7, 0.15, Math.PI - 0.15);
         ctx.stroke();
 
-        ctx.strokeStyle = "#1a1a1a";
-        ctx.lineWidth = 9;
-        ctx.beginPath();
-        ctx.moveTo(x - 10, y + 30);
-        ctx.lineTo(x - 16, y + 48);
-        ctx.moveTo(x + 10, y + 30);
-        ctx.lineTo(x + 16, y + 48);
-        ctx.stroke();
         ctx.restore();
       }
 
