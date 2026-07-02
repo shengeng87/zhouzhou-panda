@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>舟舟熊猫</title>
+  <style>
+    :root {
+      --bg1: #a8e6cf;
+      --bg2: #f0fff4;
+      --ink: #17324d;
+      --green: #2dc66d;
+      --red: #f04b4b;
+      --gold: #ffd45a;
+      --panel: rgba(255, 255, 255, 0.84);
+      font-family: "Arial", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: linear-gradient(180deg, var(--bg1), var(--bg2));
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .game {
+      position: relative;
+      width: min(100vw, 720px);
+      height: 100dvh;
+      min-height: 560px;
+      margin: 0 auto;
+      overflow: hidden;
+      background: linear-gradient(180deg, #8fd4b8 0%, #d4f5e4 42%, #7bc96a 43%, #4fa84a 100%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: absolute;
+      inset: max(12px, env(safe-area-inset-top)) 14px auto 14px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .badge {
+      min-width: 72px;
+      padding: 8px 12px;
+      border: 2px solid rgba(23, 50, 77, 0.12);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 8px 20px rgba(28, 79, 106, 0.12);
+      text-align: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .badge strong {
+      display: block;
+      font-size: clamp(20px, 6vw, 32px);
+      line-height: 1;
+    }
+
+    .badge span {
+      display: block;
+      margin-bottom: 4px;
+      color: rgba(23, 50, 77, 0.7);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .hearts {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      font-size: clamp(18px, 5.5vw, 28px);
+      line-height: 1;
+    }
+
+    .title {
+      position: absolute;
+      left: 50%;
+      top: max(72px, calc(env(safe-area-inset-top) + 68px));
+      z-index: 3;
+      width: min(92%, 520px);
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: clamp(30px, 9vw, 58px);
+      line-height: 1.05;
+      letter-spacing: 0.04em;
+      color: #16466b;
+      text-shadow: 0 4px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    .title p {
+      margin: 8px 0 0;
+      color: rgba(23, 50, 77, 0.76);
+      font-size: clamp(14px, 3.8vw, 18px);
+      font-weight: 700;
+    }
+
+    .message {
+      position: absolute;
+      left: 50%;
+      top: 40%;
+      z-index: 6;
+      width: min(88%, 430px);
+      padding: 18px 20px 20px;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 18px 38px rgba(27, 68, 88, 0.2);
+      text-align: center;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      backdrop-filter: blur(10px);
+    }
+
+    .message.hidden {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, -48%) scale(0.98);
+      transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+    }
+
+    .message .big {
+      display: block;
+      font-size: clamp(36px, 14vw, 72px);
+      line-height: 1;
+      font-weight: 900;
+      color: #e74a45;
+    }
+
+    .message .small {
+      display: block;
+      margin-top: 8px;
+      font-size: clamp(15px, 4vw, 20px);
+      font-weight: 800;
+    }
+
+    .controls {
+      position: absolute;
+      left: max(12px, env(safe-area-inset-left));
+      bottom: max(14px, env(safe-area-inset-bottom));
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(54px, 16vw));
+      grid-template-rows: repeat(3, minmax(48px, 14vw));
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .dpad button {
+      border: 0;
+      border-radius: 16px;
+      color: #16324d;
+      font-size: clamp(20px, 6vw, 28px);
+      font-weight: 900;
+      cursor: pointer;
+      touch-action: manipulation;
+      background: linear-gradient(180deg, #fff3a9, var(--gold));
+      box-shadow: 0 8px 0 #d9a930, 0 14px 22px rgba(50, 74, 85, 0.2);
+    }
+
+    .dpad button:active,
+    .dpad button.pressed {
+      transform: translateY(5px);
+      box-shadow: 0 3px 0 #d9a930, 0 8px 16px rgba(50, 74, 85, 0.18);
+    }
+
+    .dpad .empty {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .start-btn {
+      display: block;
+      width: min(72vw, 320px);
+      min-height: 58px;
+      margin: 14px auto 0;
+      border: 0;
+      border-radius: 999px;
+      color: #16324d;
+      background: linear-gradient(180deg, #c8f0ff, #7ec8f0);
+      box-shadow: 0 8px 0 #4a9ec4, 0 14px 22px rgba(50, 74, 85, 0.2);
+      font-size: clamp(20px, 5.5vw, 28px);
+      font-weight: 900;
+      cursor: pointer;
+      touch-action: manipulation;
+      pointer-events: auto;
+    }
+
+    .start-btn:active {
+      transform: translateY(5px);
+      box-shadow: 0 3px 0 #4a9ec4, 0 8px 16px rgba(50, 74, 85, 0.18);
+    }
+
+    .hint {
+      position: absolute;
+      left: 50%;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      z-index: 4;
+      width: min(72%, 360px);
+      transform: translateX(-50%);
+      color: rgba(23, 50, 77, 0.68);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    @media (max-height: 620px) {
+      .title {
+        top: 64px;
+      }
+
+      .title p {
+        display: none;
+      }
+
+      .message {
+        top: 38%;
+      }
+
+      .dpad button {
+        min-height: 46px;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="game" aria-label="舟舟熊猫游戏">
+    <canvas id="gameCanvas"></canvas>
+
+    <section class="hud" aria-live="polite">
+      <div class="badge">
+        <span>生命</span>
+        <div class="hearts" id="hearts" aria-label="生命值">❤️❤️❤️</div>
+      </div>
+      <div class="badge">
+        <span>得分</span>
+        <strong id="score">0</strong>
+      </div>
+      <div class="badge">
+        <span>最高</span>
+        <strong id="best">0</strong>
+      </div>
+    </section>
+
+    <section class="title" id="title">
+      <h1>舟舟熊猫</h1>
+      <p>在竹子上躲虫子、吃竹笋，左右换位、上下闪避！</p>
+    </section>
+
+    <section class="message" id="message">
+      <span class="big">开始</span>
+      <span class="small">用方向键在竹子间移动，躲开爬下来的虫子</span>
+      <button class="start-btn" id="startBtn" type="button">开始游戏</button>
+    </section>
+
+    <section class="controls">
+      <div class="dpad" id="dpad">
+        <span class="empty"></span>
+        <button type="button" data-dir="up" aria-label="向上">▲</button>
+        <span class="empty"></span>
+        <button type="button" data-dir="left" aria-label="向左">◀</button>
+        <span class="empty"></span>
+        <button type="button" data-dir="right" aria-label="向右">▶</button>
+        <span class="empty"></span>
+        <button type="button" data-dir="down" aria-label="向下">▼</button>
+        <span class="empty"></span>
+      </div>
+    </section>
+    <div class="hint">电脑端可用方向键；向右依次经过竹子左→右→跳到下根竹子</div>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const bestEl = document.getElementById("best");
+      const heartsEl = document.getElementById("hearts");
+      const messageEl = document.getElementById("message");
+      const titleEl = document.getElementById("title");
+      const startBtn = document.getElementById("startBtn");
+      const dpad = document.getElementById("dpad");
+
+      const STORAGE_KEY = "zhouzhouPandaBest";
+      const SLOT_BAMBOO = [0, 0, 1, 1, 2, 2];
+      const SLOT_SIDE = ["left", "right", "left", "right", "left", "right"];
+
+      const CONFIG = {
+        maxHearts: 5,
+        startHearts: 3,
+        invincibleMs: 1400,
+        moveAnimMs: 200,
+        verticalAnimMs: 320,
+        jumpAnimMs: 340,
+        bugSpeed: 92,
+        shootSpeed: 118,
+        bugSpawnMs: 1650,
+        shootSpawnMs: 4200,
+        minSpawnGap: 520,
+        scorePerSecond: 10,
+        pandaHitW: 34,
+        pandaHitH: 38,
+        itemHitR: 18
+      };
+
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let lastFrame = performance.now();
+      let state = "idle";
+      let stateStartedAt = lastFrame;
+      let score = 0;
+      let hearts = CONFIG.startHearts;
+      let best = Math.floor(Number(localStorage.getItem(STORAGE_KEY) || 0));
+      let failReason = "";
+
+      let slot = 0;
+      let row = 2;
+      let rowCount = 5;
+      let anim = null;
+      let pendingDir = null;
+      let heldDirs = new Set();
+      let invincibleUntil = 0;
+      let bugs = [];
+      let shoots = [];
+      let nextBugAt = 0;
+      let nextShootAt = 0;
+      let elapsedPlay = 0;
+      let layout = null;
+
+      bestEl.textContent = String(best);
+
+      function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+
+      function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = Math.round(rect.width);
+        height = Math.round(rect.height);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        computeLayout();
+      }
+
+      function computeLayout() {
+        const top = Math.max(118, height * 0.16);
+        const bottom = height - Math.max(190, height * 0.28);
+        const usableH = bottom - top;
+        rowCount = Math.max(4, Math.min(6, Math.floor(usableH / 72)));
+        const rowStep = usableH / (rowCount - 1);
+        const bambooXs = [width * 0.22, width * 0.5, width * 0.78];
+        const offset = Math.min(42, width * 0.09);
+
+        layout = {
+          top,
+          bottom,
+          rowStep,
+          bambooXs,
+          offset,
+          bambooW: Math.min(28, width * 0.06),
+          groundY: height - Math.max(48, height * 0.06)
+        };
+      }
+
+      function rowY(r) {
+        return layout.top + r * layout.rowStep;
+      }
+
+      function slotPos(s) {
+        const b = SLOT_BAMBOO[s];
+        const side = SLOT_SIDE[s];
+        const x = layout.bambooXs[b] + (side === "left" ? -layout.offset : layout.offset);
+        return { x, bamboo: b, side };
+      }
+
+      function pandaPos(now) {
+        if (!anim) {
+          const p = slotPos(slot);
+          return { x: p.x, y: rowY(row), bamboo: p.bamboo, side: p.side };
+        }
+
+        const t = Math.min(1, (now - anim.start) / anim.duration);
+        const ease = anim.kind === "jump"
+          ? easeInOutCubic(t)
+          : anim.verticalOnly
+            ? easeInOutCubic(t)
+            : easeOutCubic(t);
+
+        const from = slotPos(anim.fromSlot);
+        const to = slotPos(anim.toSlot);
+        const yFrom = rowY(anim.fromRow);
+        const yTo = rowY(anim.toRow);
+        const jumpLift = anim.kind === "jump" ? Math.sin(t * Math.PI) * 42 : 0;
+
+        return {
+          x: from.x + (to.x - from.x) * ease,
+          y: from.y + (to.y - from.y) * ease - jumpLift,
+          bamboo: t < 0.5 ? from.bamboo : to.bamboo,
+          side: t < 0.5 ? from.side : to.side
+        };
+      }
+
+      function isJumpBetweenSlots(a, b) {
+        return SLOT_BAMBOO[a] !== SLOT_BAMBOO[b];
+      }
+
+      function tryMove(dir, now) {
+        if (state !== "playing" || anim) {
+          return;
+        }
+
+        if (dir === "left" && slot > 0) {
+          beginMove(slot - 1, row, now);
+        } else if (dir === "right" && slot < 5) {
+          beginMove(slot + 1, row, now);
+        } else if (dir === "up" && row > 0) {
+          beginMove(slot, row - 1, now);
+        } else if (dir === "down" && row < rowCount - 1) {
+          beginMove(slot, row + 1, now);
+        }
+      }
+
+      function beginMove(nextSlot, nextRow, now) {
+        const horizontal = nextSlot !== slot;
+        const vertical = nextRow !== row;
+        if (!horizontal && !vertical) {
+          return;
+        }
+
+        const kind = horizontal && isJumpBetweenSlots(slot, nextSlot) ? "jump" : "slide";
+        const verticalOnly = !horizontal && vertical;
+        anim = {
+          kind,
+          verticalOnly,
+          fromSlot: slot,
+          toSlot: nextSlot,
+          fromRow: row,
+          toRow: nextRow,
+          start: now,
+          duration: kind === "jump"
+            ? CONFIG.jumpAnimMs
+            : verticalOnly
+              ? CONFIG.verticalAnimMs
+              : CONFIG.moveAnimMs
+        };
+      }
+
+      function pickHeldDir() {
+        if (heldDirs.has("up")) return "up";
+        if (heldDirs.has("down")) return "down";
+        if (heldDirs.has("left")) return "left";
+        if (heldDirs.has("right")) return "right";
+        return pendingDir;
+      }
+
+      function flushPendingMove(now) {
+        const dir = pickHeldDir();
+        pendingDir = null;
+        if (dir) {
+          tryMove(dir, now);
+        }
+      }
+
+      function updateAnim(now) {
+        if (!anim) {
+          return;
+        }
+        if (now - anim.start >= anim.duration) {
+          slot = anim.toSlot;
+          row = anim.toRow;
+          anim = null;
+          flushPendingMove(now);
+        }
+      }
+
+      function setState(next, now = performance.now()) {
+        state = next;
+        stateStartedAt = now;
+        updateUi(now);
+      }
+
+      function renderHearts() {
+        const full = Math.min(hearts, CONFIG.maxHearts);
+        let text = "";
+        for (let i = 0; i < full; i += 1) text += "❤️";
+        for (let i = full; i < CONFIG.maxHearts; i += 1) text += "🤍";
+        heartsEl.textContent = text.slice(0, 6);
+      }
+
+      function startGame(now = performance.now()) {
+        score = 0;
+        hearts = CONFIG.startHearts;
+        slot = 0;
+        row = Math.floor((rowCount - 1) / 2);
+        anim = null;
+        pendingDir = null;
+        heldDirs.clear();
+        invincibleUntil = 0;
+        bugs = [];
+        shoots = [];
+        elapsedPlay = 0;
+        failReason = "";
+        nextBugAt = now + 900;
+        nextShootAt = now + 2200;
+        scoreEl.textContent = "0";
+        renderHearts();
+        titleEl.style.display = "none";
+        setState("playing", now);
+      }
+
+      function gameOver(now) {
+        const finalScore = Math.floor(score);
+        if (finalScore > best) {
+          best = finalScore;
+          localStorage.setItem(STORAGE_KEY, String(best));
+          bestEl.textContent = String(best);
+          failReason = "新纪录！";
+        } else {
+          failReason = "竹子太危险了";
+        }
+        setState("gameover", now);
+      }
+
+      function loseHeart(now) {
+        if (now < invincibleUntil) {
+          return;
+        }
+        hearts -= 1;
+        renderHearts();
+        invincibleUntil = now + CONFIG.invincibleMs;
+        if (hearts <= 0) {
+          gameOver(now);
+        }
+      }
+
+      function gainHeart() {
+        if (hearts < CONFIG.maxHearts) {
+          hearts += 1;
+          renderHearts();
+        }
+      }
+
+      function spawnBug(now) {
+        const bamboo = Math.floor(Math.random() * 3);
+        const side = Math.random() < 0.5 ? "left" : "right";
+        bugs.push({
+          bamboo,
+          side,
+          y: layout.top - 24,
+          wiggle: Math.random() * Math.PI * 2
+        });
+        const difficulty = Math.min(0.45, elapsedPlay / 120);
+        nextBugAt = now + CONFIG.bugSpawnMs * (1 - difficulty) + Math.random() * CONFIG.minSpawnGap;
+      }
+
+      function spawnShoot(now) {
+        const bamboo = Math.floor(Math.random() * 3);
+        shoots.push({
+          bamboo,
+          y: layout.top - 30,
+          spin: Math.random() * Math.PI * 2
+        });
+        nextShootAt = now + CONFIG.shootSpawnMs + Math.random() * 1800;
+      }
+
+      function itemX(bamboo, side) {
+        const base = layout.bambooXs[bamboo];
+        return base + (side === "left" ? -layout.offset * 0.55 : layout.offset * 0.55);
+      }
+
+      function overlaps(a, b, margin = 0) {
+        return Math.abs(a.x - b.x) < (a.w + b.w) * 0.5 - margin &&
+          Math.abs(a.y - b.y) < (a.h + b.h) * 0.5 - margin;
+      }
+
+      function updateEntities(dt, now) {
+        if (state !== "playing") {
+          return;
+        }
+
+        elapsedPlay += dt * 0.001;
+        score += (dt * 0.001) * CONFIG.scorePerSecond;
+        scoreEl.textContent = String(Math.floor(score));
+
+        const speedBoost = 1 + Math.min(0.55, elapsedPlay / 100);
+
+        if (now >= nextBugAt) {
+          spawnBug(now);
+        }
+        if (now >= nextShootAt) {
+          spawnShoot(now);
+        }
+
+        bugs = bugs.filter((bug) => {
+          bug.y += CONFIG.bugSpeed * speedBoost * dt * 0.001;
+          bug.wiggle += dt * 0.008;
+          if (bug.y > layout.groundY + 30) {
+            return false;
+          }
+
+          const p = pandaPos(now);
+          if (p.bamboo === bug.bamboo && p.side === bug.side) {
+            const hit = overlaps(
+              { x: p.x, y: p.y, w: CONFIG.pandaHitW, h: CONFIG.pandaHitH },
+              { x: itemX(bug.bamboo, bug.side), y: bug.y, w: 26, h: 22 }
+            );
+            if (hit) {
+              loseHeart(now);
+              return false;
+            }
+          }
+          return true;
+        });
+
+        shoots = shoots.filter((shoot) => {
+          shoot.y += CONFIG.shootSpeed * dt * 0.001;
+          shoot.spin += dt * 0.005;
+          if (shoot.y > layout.groundY + 30) {
+            return false;
+          }
+
+          const p = pandaPos(now);
+          const sameBamboo = p.bamboo === shoot.bamboo;
+          const hit = sameBamboo && Math.abs(p.y - shoot.y) < CONFIG.pandaHitH * 0.55 + CONFIG.itemHitR;
+          if (hit) {
+            gainHeart();
+            score += 25;
+            scoreEl.textContent = String(Math.floor(score));
+            return false;
+          }
+          return true;
+        });
+      }
+
+      function updateUi(now) {
+        const playing = state === "playing";
+        messageEl.classList.toggle("hidden", playing);
+        startBtn.style.display = playing ? "none" : "block";
+        dpad.style.opacity = playing ? "1" : "0.5";
+        dpad.style.pointerEvents = playing ? "auto" : "none";
+
+        if (state === "idle") {
+          startBtn.textContent = "开始游戏";
+          messageEl.querySelector(".big").textContent = "开始";
+          messageEl.querySelector(".small").textContent = "用方向键在竹子间移动，躲开爬下来的虫子";
+          titleEl.style.display = "";
+        } else if (state === "gameover") {
+          startBtn.textContent = "再来一次";
+          messageEl.querySelector(".big").textContent = "游戏结束";
+          messageEl.querySelector(".small").textContent =
+            `${failReason} 本次得分 ${Math.floor(score)}`;
+        }
+      }
+
+      function roundedRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+
+      function drawBackground() {
+        ctx.clearRect(0, 0, width, height);
+
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        for (const cloud of [
+          [width * 0.16, height * 0.1, 34],
+          [width * 0.7, height * 0.08, 28],
+          [width * 0.84, height * 0.16, 20]
+        ]) {
+          ctx.beginPath();
+          ctx.arc(cloud[0], cloud[1], cloud[2], 0, Math.PI * 2);
+          ctx.arc(cloud[0] + cloud[2] * 0.75, cloud[1] + 8, cloud[2] * 0.72, 0, Math.PI * 2);
+          ctx.arc(cloud[0] - cloud[2] * 0.72, cloud[1] + 11, cloud[2] * 0.62, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const hillY = layout.groundY - 18;
+        ctx.fillStyle = "#5cb84f";
+        ctx.beginPath();
+        ctx.moveTo(0, hillY + 40);
+        ctx.quadraticCurveTo(width * 0.25, hillY - 10, width * 0.5, hillY + 8);
+        ctx.quadraticCurveTo(width * 0.78, hillY + 24, width, hillY + 6);
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#48a842";
+        ctx.fillRect(0, layout.groundY, width, height - layout.groundY);
+      }
+
+      function drawBamboo(x, now) {
+        const top = layout.top - 36;
+        const bottom = layout.groundY + 8;
+        const w = layout.bambooW;
+
+        ctx.save();
+        ctx.fillStyle = "#3d8f45";
+        roundedRect(x - w * 0.5, top, w, bottom - top, w * 0.35);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(22, 70, 30, 0.35)";
+        ctx.lineWidth = 2;
+        for (let y = top + 18; y < bottom; y += 28) {
+          ctx.beginPath();
+          ctx.moveTo(x - w * 0.42, y);
+          ctx.lineTo(x + w * 0.42, y);
+          ctx.stroke();
+        }
+
+        const leafPhase = now * 0.002 + x * 0.01;
+        ctx.fillStyle = "#5ecf62";
+        for (let i = 0; i < 3; i += 1) {
+          const ly = top + 30 + i * 46;
+          const sway = Math.sin(leafPhase + i) * 8;
+          ctx.beginPath();
+          ctx.ellipse(x + sway + (i % 2 ? 18 : -18), ly, 20, 8, (i % 2 ? 0.5 : -0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawBug(bug, now) {
+        const x = itemX(bug.bamboo, bug.side) + Math.sin(bug.wiggle) * 3;
+        const y = bug.y;
+
+        ctx.save();
+        ctx.fillStyle = "#6d4c2f";
+        roundedRect(x - 10, y - 5, 20, 14, 6);
+        ctx.fill();
+
+        ctx.fillStyle = "#8d6240";
+        ctx.beginPath();
+        ctx.arc(x - 8, y - 8, 5, 0, Math.PI * 2);
+        ctx.arc(x + 2, y - 9, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#3d2914";
+        ctx.lineWidth = 2;
+        for (const leg of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(x + leg * 4, y + 2);
+          ctx.lineTo(x + leg * 14, y + 10);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = "#222";
+        ctx.beginPath();
+        ctx.arc(x - 7, y - 9, 1.5, 0, Math.PI * 2);
+        ctx.arc(x + 3, y - 10, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawShoot(shoot) {
+        const x = layout.bambooXs[shoot.bamboo];
+        const y = shoot.y;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(shoot.spin);
+
+        ctx.fillStyle = "#c8e6c0";
+        roundedRect(-8, -16, 16, 32, 6);
+        ctx.fill();
+
+        ctx.fillStyle = "#8bc48a";
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.lineTo(5, -10);
+        ctx.lineTo(-5, -10);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "#4f8f52";
+        ctx.lineWidth = 2;
+        for (let i = -10; i <= 8; i += 6) {
+          ctx.beginPath();
+          ctx.moveTo(-7, i);
+          ctx.lineTo(7, i);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawPanda(x, y, now, invincible) {
+        const blink = invincible && Math.floor(now / 90) % 2 === 0;
+
+        ctx.save();
+        if (blink) {
+          ctx.globalAlpha = 0.45;
+        }
+
+        ctx.fillStyle = "rgba(20, 40, 20, 0.18)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 24, 28, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#fff";
+        roundedRect(x - 24, y - 8, 48, 40, 16);
+        ctx.fill();
+
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.arc(x - 16, y - 20, 10, 0, Math.PI * 2);
+        ctx.arc(x + 16, y - 20, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(x, y - 18, 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.arc(x - 6, y - 18, 3, 0, Math.PI * 2);
+        ctx.arc(x + 6, y - 18, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.ellipse(x, y - 10, 5, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 8;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(x - 14, y + 8);
+        ctx.lineTo(x - 28, y + 22);
+        ctx.moveTo(x + 14, y + 8);
+        ctx.lineTo(x + 28, y + 22);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#1a1a1a";
+        ctx.lineWidth = 9;
+        ctx.beginPath();
+        ctx.moveTo(x - 10, y + 30);
+        ctx.lineTo(x - 16, y + 48);
+        ctx.moveTo(x + 10, y + 30);
+        ctx.lineTo(x + 16, y + 48);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawSlotHints() {
+        if (state !== "playing") {
+          return;
+        }
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(23, 50, 77, 0.08)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 8]);
+        for (let s = 0; s < 6; s += 1) {
+          const p = slotPos(s);
+          for (let r = 0; r < rowCount; r += 1) {
+            ctx.beginPath();
+            ctx.arc(p.x, rowY(r), 10, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+
+      function render(now) {
+        if (!layout) {
+          return;
+        }
+
+        drawBackground();
+        for (const x of layout.bambooXs) {
+          drawBamboo(x, now);
+        }
+
+        drawSlotHints();
+
+        for (const shoot of shoots) {
+          drawShoot(shoot);
+        }
+        for (const bug of bugs) {
+          drawBug(bug, now);
+        }
+
+        const p = pandaPos(now);
+        drawPanda(p.x, p.y, now, now < invincibleUntil);
+      }
+
+      function frame(now) {
+        const dt = Math.min(48, now - lastFrame);
+        lastFrame = now;
+
+        updateAnim(now);
+        updateEntities(dt, now);
+        updateUi(now);
+        render(now);
+
+        requestAnimationFrame(frame);
+      }
+
+      const keyMap = {
+        ArrowLeft: "left",
+        ArrowRight: "right",
+        ArrowUp: "up",
+        ArrowDown: "down",
+        KeyA: "left",
+        KeyD: "right",
+        KeyW: "up",
+        KeyS: "down"
+      };
+
+      function bindDirButton(btn) {
+        const dir = btn.dataset.dir;
+        const press = (event) => {
+          event.preventDefault();
+          btn.classList.add("pressed");
+          if (state === "playing") {
+            tryMove(dir, performance.now());
+          }
+        };
+        const release = () => btn.classList.remove("pressed");
+
+        btn.addEventListener("pointerdown", press);
+        btn.addEventListener("pointerup", release);
+        btn.addEventListener("pointercancel", release);
+        btn.addEventListener("pointerleave", release);
+      }
+
+      function queueDir(dir, now) {
+        if (state !== "playing") {
+          return;
+        }
+        if (anim) {
+          pendingDir = dir;
+          return;
+        }
+        tryMove(dir, now);
+      }
+
+      dpad.querySelectorAll("button[data-dir]").forEach(bindDirButton);
+
+      startBtn.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        if (state === "idle" || state === "gameover") {
+          startGame();
+        }
+      });
+
+      window.addEventListener("keydown", (event) => {
+        const dir = keyMap[event.code];
+        if (!dir) {
+          if (event.code === "Enter" && (state === "idle" || state === "gameover")) {
+            event.preventDefault();
+            startGame();
+          }
+          return;
+        }
+
+        event.preventDefault();
+        heldDirs.add(dir);
+        if (!event.repeat) {
+          queueDir(dir, performance.now());
+        }
+      });
+
+      window.addEventListener("keyup", (event) => {
+        const dir = keyMap[event.code];
+        if (dir) {
+          heldDirs.delete(dir);
+        }
+      });
+
+      window.addEventListener("resize", resize);
+
+      resize();
+      renderHearts();
+      updateUi(lastFrame);
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
