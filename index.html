@@ -585,7 +585,7 @@
 
       function loseHeart(now) {
         if (now < invincibleUntil) {
-          return;
+          return false;
         }
         hearts -= 1;
         renderHearts();
@@ -593,6 +593,7 @@
         if (hearts <= 0) {
           gameOver(now);
         }
+        return true;
       }
 
       function gainHeart() {
@@ -651,7 +652,35 @@
 
       function itemX(bamboo, side) {
         const base = layout.bambooXs[bamboo];
-        return base + (side === "left" ? -layout.offset * 0.55 : layout.offset * 0.55);
+        return base + (side === "left" ? -layout.offset : layout.offset);
+      }
+
+      function yRangesOverlap(aMin, aMax, bMin, bMax) {
+        return aMin <= bMax && bMin <= aMax;
+      }
+
+      function hitsBug(p, bug, moveDy) {
+        const bugX = itemX(bug.bamboo, bug.side);
+        const bugW = 28;
+        const bugH = 24;
+        const pW = CONFIG.pandaHitW;
+        const pH = CONFIG.pandaHitH;
+
+        const nearLaneX = Math.abs(p.x - bugX) <= (pW + bugW) * 0.52;
+        const nearBamboo = Math.abs(p.x - layout.bambooXs[bug.bamboo]) <= layout.offset * 1.35;
+        if (!nearLaneX || !nearBamboo) {
+          return false;
+        }
+
+        const pTop = p.y - pH * 0.52;
+        const pBottom = p.y + pH * 0.52;
+        const bugTop = bug.y - bugH * 0.5;
+        const bugBottom = bug.y + bugH * 0.5;
+        const bugPrevTop = bug.y - moveDy - bugH * 0.5;
+        const bugPrevBottom = bug.y - moveDy + bugH * 0.5;
+
+        return yRangesOverlap(pTop, pBottom, bugTop, bugBottom) ||
+          yRangesOverlap(pTop, pBottom, bugPrevTop, bugPrevBottom);
       }
 
       function overlaps(a, b, margin = 0) {
@@ -678,20 +707,16 @@
         }
 
         bugs = bugs.filter((bug) => {
-          bug.y += bugSpeed * dt * 0.001;
+          const moveDy = bugSpeed * dt * 0.001;
+          bug.y += moveDy;
           bug.wiggle += dt * 0.008;
           if (bug.y > layout.groundY + 30) {
             return false;
           }
 
           const p = pandaPos(now);
-          if (p.bamboo === bug.bamboo && p.side === bug.side) {
-            const hit = overlaps(
-              { x: p.x, y: p.y, w: CONFIG.pandaHitW, h: CONFIG.pandaHitH },
-              { x: itemX(bug.bamboo, bug.side), y: bug.y, w: 26, h: 22 }
-            );
-            if (hit) {
-              loseHeart(now);
+          if (hitsBug(p, bug, moveDy)) {
+            if (loseHeart(now)) {
               return false;
             }
           }
